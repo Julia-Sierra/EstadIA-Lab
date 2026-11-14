@@ -21,20 +21,27 @@ window.ESTADIA.apiUrl = (path) => {
 window.ESTADIA.formatPercent = (value) => `${Number(value || 0).toFixed(4)}%`;
 
 window.ESTADIA.renderParamList = (params) => {
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
   const labels = {
     lambdaBase: 'λ base',
     intervaloBase: 'Intervalo base',
     unidadBase: 'Unidad base',
-    lambdaAjustado: 'λ ajustado',
+    lambdaAjustado: 'λ utilizado',
     intervaloPregunta: 'Intervalo solicitado',
     unidadPregunta: 'Unidad solicitada'
   };
   const entries = Object.entries(params || {})
-    .filter(([key]) => !key.endsWith('Segundos'))
+    .filter(([key]) => !key.startsWith('valor') && !key.startsWith('dimension'))
     .map(([key, value]) => [labels[key] || key, value]);
   if (!entries.length) return '<div class="param-item">Sin parámetros adicionales.</div>';
   return entries
-    .map(([key, value]) => `<div class="param-item"><strong>${key}:</strong> ${value}</div>`)
+    .map(([key, value]) => `<div class="param-item"><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</div>`)
     .join('');
 };
 

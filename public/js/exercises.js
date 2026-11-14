@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentExercise = null;
   let activeOperation = null;
   let latestSolution = null;
+  let latestCalculation = null;
 
   const customOperationsByDistribution = {
     binomial: [
@@ -39,8 +40,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       { key: 'al_menos_k', label: 'P(X >= k)', description: 'Probabilidad complementaria' }
     ],
     poisson: [
+      { key: 'esperanza_poisson', label: 'E[X] = λ', description: 'Valor esperado para el intervalo solicitado' },
       { key: 'exacta_poisson', label: 'P(X = x)', description: 'Probabilidad exacta' },
       { key: 'max_poisson', label: 'P(X <= x)', description: 'Como máximo' },
+      { key: 'menos_poisson', label: 'P(X < x)', description: 'Menos de x' },
+      { key: 'minimo_poisson', label: 'P(X >= x)', description: 'Al menos x' },
       { key: 'mas_de_poisson', label: 'P(X > x)', description: 'Más de x' }
     ],
     exponential: [
@@ -163,6 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     const payload = await response.json();
     const data = payload.result;
+    latestCalculation = data;
     const isExpectedCount = selected.key.startsWith('mean_');
     const resultSummary = isExpectedCount
       ? `<p>Cantidad promedio esperada: <strong>${Number(data.result).toFixed(2)}</strong></p>`
@@ -214,6 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const analysis = payload.analysis;
       latestSolution = payload;
+      latestCalculation = null;
       const distributionLabel = analysis.label || 'No identificada';
       const distributionKey = (analysis.distribution || 'binomial').toLowerCase();
       const availableOperations = customOperationsByDistribution[distributionKey] || customOperationsByDistribution.binomial;
@@ -232,11 +238,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           const percentageNumber = Number(item.percentage ?? payload.percentage ?? 0);
           const formula = item.formula || payload.formula || 'No disponible';
           const operation = item.operation || payload.operation || '';
-          const isExpectedCount = operation.startsWith('E[X]');
-          const adjustedLambda = item.params?.lambdaAjustado;
-          const lambdaSummary = Number.isFinite(adjustedLambda)
-            ? `<p>λ ajustado: <strong>${Number(adjustedLambda).toPrecision(6)}</strong> para ${escapeHtml(String(item.params.intervaloPregunta))} ${escapeHtml(item.params.unidadPregunta)}</p>`
+          const itemParams = item.params || payload.params || {};
+          const hasAdjustedLambda = Number.isFinite(itemParams.lambdaAjustado);
+          const lambdaSummary = hasAdjustedLambda
+            ? `<p>λ utilizado: <strong>${Number(itemParams.lambdaAjustado).toPrecision(6)}</strong> para ${escapeHtml(String(itemParams.intervaloPregunta))} ${escapeHtml(String(itemParams.unidadPregunta))}</p>`
             : '';
+          const isExpectedCount = operation.startsWith('E[X]');
           const resultSummary = isExpectedCount
             ? `<p>Cantidad promedio esperada: <strong>${resultNumber.toFixed(2)}</strong></p>`
             : `<p>La probabilidad es: <strong>${resultNumber.toFixed(5)}</strong> (${percentageNumber.toFixed(2)}%)</p>`;
@@ -302,13 +309,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const customAnswers = latestSolution?.answers || [];
     const selectedExerciseOperation = currentExercise?.operations
       .find((item) => item.key === activeOperation);
+    const geminiAnswers = customAnswers.length
+      ? customAnswers
+      : latestSolution
+        ? [{
+          question: problemQuestion1.value.trim() || question,
+          params: latestSolution.params || {},
+          operation: latestSolution.operation,
+          formula: latestSolution.formula,
+          result: latestSolution.result
+        }]
+        : latestCalculation
+          ? [{
+            question: selectedExerciseOperation?.description || selectedExerciseOperation?.label,
+            params: latestCalculation.params || {},
+            operation: selectedExerciseOperation?.label,
+            formula: latestCalculation.formula || selectedExerciseOperation?.formula,
+            result: latestCalculation.result
+          }]
+          : [];
     const context = {
       question,
       enunciado: problemStatement.value.trim() || currentExercise?.enunciado || enunciadoNode.textContent,
       distribution: latestSolution?.analysis?.label || currentExercise?.distribution || 'No identificada',
       keywords: latestSolution?.analysis?.keywords || [],
-      params: latestSolution?.params || currentExercise?.params || {},
-      answers: latestSolution?.answers || [],
+      params: latestSolution?.params || latestCalculation?.params || currentExercise?.params || {},
+      answers: geminiAnswers,
       operation: customAnswers.map((answer) => answer.operation).filter(Boolean).join('; ')
         || selectedExerciseOperation?.label
         || 'No especificada',
@@ -336,6 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentExercise = null;
     activeOperation = null;
     latestSolution = null;
+    latestCalculation = null;
     assistantOutput.textContent = 'La respuesta de Gemini aparecerá aquí.';
   });
 

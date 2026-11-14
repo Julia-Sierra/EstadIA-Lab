@@ -27,8 +27,13 @@ module.exports = async function geminiHandler(req, res) {
     return res.status(503).json({ ok: false, message: 'Configura GEMINI_API_KEY como variable secreta del servidor.' });
   }
 
+  const context = req.body || {};
+  if (!String(context.prompt || context.question || '').trim()) {
+    return res.status(400).json({ ok: false, message: 'Escribe una pregunta para Gemini.' });
+  }
+
   try {
-    const result = await generateExplanation(req.body || {});
+    const result = await generateExplanation(context);
     return res.status(200).json({ ok: true, ...result });
   } catch (error) {
     return res.status(error.statusCode || 502).json({

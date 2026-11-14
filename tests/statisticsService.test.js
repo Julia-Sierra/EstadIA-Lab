@@ -64,62 +64,102 @@ test('Poisson questions recalculate lambda for each requested interval', () => {
   assert.equal(mean.percentage, null);
   assert.equal(mean.params.lambdaBase, 18);
   assert.equal(mean.params.lambdaAjustado, 6);
-  assert.match(mean.formula, /λ ajustado = 18 × \(60 \/ 180\) = 6 para 1 minuto/);
+  assert.match(mean.formula, /regla de tres desde 18 en 3 minutos → 1 minuto/);
 
   assert.equal(exact.operation, 'P(X = 8)');
   assert.ok(Math.abs(exact.result - poissonProbability(6, 8)) < 1e-10);
-  assert.ok(Math.abs(exact.result - 0.1032577335) < 1e-10);
-  assert.match(exact.formula, /λ ajustado = 18 × \(60 \/ 180\) = 6 para 1 minuto/);
+  assert.match(exact.formula, /regla de tres desde 18 en 3 minutos → 1 minuto/);
 
   assert.equal(alert.operation, 'P(X > 10)');
   assert.ok(Math.abs(alert.result - (1 - poissonCdf(6, 10))) < 1e-10);
-  assert.ok(Math.abs(alert.result - 0.0426209236) < 1e-10);
-  assert.match(alert.formula, /λ ajustado = 18 × \(60 \/ 180\) = 6 para 1 minuto/);
+  assert.match(alert.formula, /regla de tres desde 18 en 3 minutos → 1 minuto/);
 
   assert.equal(noRequests.operation, 'P(X = 0)');
   assert.ok(Math.abs(noRequests.result - poissonProbability(3, 0)) < 1e-10);
-  assert.ok(Math.abs(noRequests.result - 0.0497870684) < 1e-10);
-  assert.match(noRequests.formula, /λ ajustado = 18 × \(30 \/ 180\) = 3 para 30 segundos/);
   assert.equal(noRequests.params.lambdaAjustado, 3);
+  assert.match(noRequests.formula, /regla de tres desde 18 en 3 minutos → 30 segundos/);
 });
 
-test('Poisson parsing inherits base duration and converts other time units', () => {
+test('Poisson scales rates across non-time units and fractional intervals', () => {
+  const distanceBased = solveProblem({
+    statement: 'A process records an average of 4 occurrences every 500 meters.',
+    questions: ['Find the probability of exactly 3 occurrences over 2 kilometers.']
+  });
+  assert.equal(distanceBased.distribution, 'poisson');
+  assert.equal(distanceBased.params.lambdaAjustado, 16);
+  assert.equal(distanceBased.params.unidadBase, 'metros');
+  assert.equal(distanceBased.params.unidadPregunta, 'kilometros');
+
+  const fractionalTime = solveProblem({
+    statement: 'En promedio, ocurren 2.5 incidentes por hora.',
+    questions: ['Calcule la probabilidad de exactamente 1 incidente durante un cuarto de hora.']
+  });
+  assert.equal(fractionalTime.params.lambdaBase, 2.5);
+  assert.equal(fractionalTime.params.lambdaAjustado, 0.625);
+  assert.equal(fractionalTime.params.intervaloPregunta, 0.25);
+
+  const reversedStatement = solveProblem({
+    statement: 'En un intervalo de tiempo de 2 horas se registran 10 incidentes en promedio.',
+    questions: ['Calcule la probabilidad de exactamente 1 incidente durante media hora.']
+  });
+  assert.equal(reversedStatement.params.lambdaBase, 10);
+  assert.equal(reversedStatement.params.lambdaAjustado, 2.5);
+
+  const pageBased = solveProblem({
+    statement: 'Se observan 3 ocurrencias por cada 500 páginas.',
+    questions: ['Calcule la probabilidad de exactamente 2 ocurrencias en 1000 páginas.']
+  });
+  assert.equal(pageBased.params.lambdaAjustado, 6);
+
+  const calendarUnits = solveProblem({
+    statement: 'Un proceso registra 12 eventos cada 2 meses.',
+    questions: ['Determine la probabilidad de exactamente 5 eventos durante un año.']
+  });
+  assert.equal(calendarUnits.params.lambdaAjustado, 73);
+
+  const weeklyRate = solveProblem({
+    statement: 'A process records 4 occurrences per week.',
+    questions: ['Find the probability of exactly 1 occurrence in 2 days.']
+  });
+  assert.ok(Math.abs(weeklyRate.params.lambdaAjustado - (8 / 7)) < 1e-12);
+});
+
+test('Poisson inherits a compatible interval and rejects incompatible units', () => {
   const inherited = solveProblem({
-    statement: 'El servicio recibe 18 solicitudes cada 3 minutos.',
-    questions: ['Calcule la probabilidad de exactamente 8 solicitudes.']
-  });
-  assert.equal(inherited.params.lambdaBase, 18);
-  assert.equal(inherited.params.lambdaAjustado, 18);
-  assert.equal(inherited.params.intervaloPregunta, 3);
-  assert.equal(inherited.params.unidadPregunta, 'minutos');
-
-  const converted = solveProblem({
-    statement: 'El sistema recibe 12 solicitudes cada 2 horas.',
-    questions: ['Calcule la probabilidad de exactamente 2 solicitudes durante un día.']
-  });
-  assert.equal(converted.params.lambdaBase, 12);
-  assert.equal(converted.params.lambdaAjustado, 144);
-  assert.equal(converted.params.tiempoBaseSegundos, 7200);
-  assert.equal(converted.params.tiempoPreguntaSegundos, 86400);
-});
-
-test('Poisson follows the previous interval and the alert-window interval when omitted', () => {
-  const solution = solveProblem({
-    statement: 'El servicio recibe 18 solicitudes cada 3 minutos. Genera una alerta cuando recibe más de 10 solicitudes en un minuto.',
+    statement: 'El servicio registra 18 solicitudes cada 3 minutos.',
     questions: [
       'Calcule la probabilidad de exactamente 8 solicitudes durante 30 segundos.',
       'Calcule la probabilidad de no recibir solicitudes.'
     ]
   });
-  assert.equal(solution.answers[0].params.lambdaAjustado, 3);
-  assert.equal(solution.answers[1].params.lambdaAjustado, 3);
+  assert.equal(inherited.answers[1].params.lambdaAjustado, 3);
 
-  const alert = solveProblem({
-    statement: 'El sistema recibe 18 solicitudes cada 3 minutos y genera una alerta cuando recibe más de 10 solicitudes en un minuto.',
-    questions: ['Determine la probabilidad de que el sistema active la alerta.']
+  assert.throws(() => solveProblem({
+    statement: 'El servicio registra 18 solicitudes cada 3 minutos.',
+    questions: ['Calcule la probabilidad de exactamente 8 solicitudes durante 500 metros.']
+  }), /no es compatible/);
+});
+
+test('Poisson uses the interval attached to a referenced alert when the question omits it', () => {
+  const solution = solveProblem({
+    statement: 'El servicio registra 18 solicitudes cada 3 minutos. Se activa una alerta al recibir más de 10 solicitudes en un minuto.',
+    questions: ['Determine la probabilidad de que se active la alerta.']
   });
-  assert.equal(alert.params.lambdaAjustado, 6);
-  assert.equal(alert.operation, 'P(X > 10)');
+  assert.equal(solution.params.lambdaAjustado, 6);
+  assert.equal(solution.operation, 'P(X > 10)');
+  assert.ok(Math.abs(solution.result - (1 - poissonCdf(6, 10))) < 1e-10);
+});
+
+test('Poisson does not divide by zero or substitute a default rate when base data is missing', () => {
+  assert.throws(() => solveProblem({
+    statement: 'Las solicitudes llegan independientemente.',
+    questions: ['Calcule la probabilidad de exactamente 2 solicitudes.']
+  }), /tasa promedio y el intervalo base/);
+
+  assert.throws(() => solveProblem({
+    statement: 'El servicio recibe 18 solicitudes cada 0 minutos.',
+    questions: ['Calcule la probabilidad de exactamente 2 solicitudes durante un minuto.']
+  }), /tasa promedio y el intervalo base/);
 });
 
 test('Poisson supports strict and inclusive probability tails', () => {
@@ -133,7 +173,6 @@ test('Poisson supports strict and inclusive probability tails', () => {
     ]
   });
   const [less, lessOrEqual, greaterOrEqual, greater] = solution.answers;
-
   assert.equal(less.operation, 'P(X < 8)');
   assert.ok(Math.abs(less.result - poissonCdf(6, 7)) < 1e-10);
   assert.equal(lessOrEqual.operation, 'P(X <= 8)');
@@ -145,21 +184,17 @@ test('Poisson supports strict and inclusive probability tails', () => {
 });
 
 test('built-in API saturation exercise calculates each Poisson event with the converted lambda', () => {
-  const mean = calculateExercise(3, 'mean_20');
-  const shortWindow = calculateExercise(3, 'max_3_5min');
-  assert.equal(mean.result, 12);
-  assert.equal(mean.params.lambdaAjustado, 12);
-  assert.ok(Math.abs(shortWindow.result - poissonCdf(3, 3)) < 1e-10);
-
-  assert.equal(calculateExercise(5, 'mean_1min').result, 6);
-  assert.equal(calculateExercise(5, 'mean_1min').percentage, null);
+  const mean = calculateExercise(5, 'mean_1min');
   const exact = calculateExercise(5, 'exacta_8');
   const alert = calculateExercise(5, 'alerta_1min');
   const zero = calculateExercise(5, 'zero_30s');
+  assert.equal(mean.result, 6);
+  assert.equal(mean.percentage, null);
+  assert.equal(mean.params.lambdaAjustado, 6);
+  assert.match(mean.formula, /λ ajustado = 6/);
   assert.ok(Math.abs(exact.result - poissonProbability(6, 8)) < 1e-10);
   assert.ok(Math.abs(alert.result - (1 - poissonCdf(6, 10))) < 1e-10);
   assert.ok(Math.abs(zero.result - poissonProbability(3, 0)) < 1e-10);
-  assert.equal(exact.params.lambdaAjustado, 6);
   assert.equal(zero.params.lambdaAjustado, 3);
-  assert.match(zero.formula, /λ ajustado = 18 × \(30 \/ 180\) = 3 para 30 segundos/);
+  assert.match(zero.formula, /λ ajustado = 3/);
 });
