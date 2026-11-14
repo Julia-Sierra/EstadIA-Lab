@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | EstadIA Lab</title>
+    <link rel="stylesheet" href="/public/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav">
+        <div class="brand">
+          <img src="/assets/Logo EstadIA_Lab.png" alt="Logo de EstadIA Lab" />
+          <div>
+            <strong>EstadIA Lab</strong>
+            <small>Comprende los datos. Descubre la probabilidad.</small>
+          </div>
+        </div>
+        <nav>
+          <a href="/">Inicio</a>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/exercises?exercise=1">Ejercicios</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container page-shell dashboard-page">
+      <section class="card hero-small">
+        <div>
+          <span class="eyebrow">Panel principal</span>
+          <h1>Dashboard de prácticas estadísticas</h1>
+        </div>
+      </section>
+
+      <section class="summary-grid">
+        <div class="card summary-card"><strong>8</strong><span>Ejercicios disponibles</span></div>
+        <div class="card summary-card"><strong>5</strong><span>Modelos estadísticos</span></div>
+        <div class="card summary-card"><strong>0</strong><span>Simulaciones de la sesión</span></div>
+        <div class="card summary-card"><strong>AI</strong><span>Asistente Gemini</span></div>
+      </section>
+
+      <section class="card section-block primary-analysis">
+        <h2>Analiza un problema estadístico</h2>
+        <div class="analysis-box">
+          <textarea id="analysis-input" rows="7" placeholder="Escribe aquí el enunciado, por ejemplo: 'Durante una evaluación, 18 componentes tienen una probabilidad del 12% de presentar una vulnerabilidad crítica...' "></textarea>
+          <div class="action-row">
+            <button id="analyze-button" class="button primary">Analizar problema</button>
+            <a class="button secondary" href="/exercises">Resolver en la vista de ejercicios</a>
+          </div>
+          <div id="analysis-result" class="analysis-output"></div>
+        </div>
+      </section>
+
+      <section class="card section-block">
+        <h2>Ejercicios de referencia</h2>
+        <div id="exercise-list" class="exercise-grid"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-content">
+        <span>Desarrollador: Desarrollador</span>
+        <span>Carrera: Ingeniería en Sistemas / Estadística aplicada</span>
+        <span>Institución: Facultad de Ingeniería en Sistemas de Información</span>
+        <span>Asignatura: Estadística I</span>
+        <span>Año: 2026</span>
+      </div>
+    </footer>
+
+    <script src="/public/js/app.js"></script>
+    <script src="/public/js/dashboard.js"></script>
+  </body>
+</html>

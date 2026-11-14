@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ejercicios | EstadIA Lab</title>
+    <link rel="stylesheet" href="/public/css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav">
+        <div class="brand">
+          <img src="/assets/Logo EstadIA_Lab.png" alt="Logo de EstadIA Lab" />
+          <div>
+            <strong>EstadIA Lab</strong>
+            <small>Comprende los datos. Descubre la probabilidad.</small>
+          </div>
+        </div>
+        <nav>
+          <a href="/">Inicio</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container page-shell exercise-page">
+      <div class="workspace-tabs" role="tablist" aria-label="Secciones de EstadIA Lab">
+        <button id="tab-resolver" class="workspace-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-resolver" data-workspace-tab="resolver">Resolver problema</button>
+        <button id="tab-videos" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-videos" data-workspace-tab="videos">Videos</button>
+        <button id="tab-resueltos" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-resueltos" data-workspace-tab="resueltos">Ejercicios resueltos</button>
+      </div>
+
+      <div id="panel-resolver" class="workspace-panel" role="tabpanel" aria-labelledby="tab-resolver" data-workspace-panel="resolver">
+      <section class="card section-block problem-entry">
+        <h2>Introduce un problema estadístico</h2>
+
+        <label for="problem-statement">Planteamiento</label>
+        <textarea id="problem-statement" rows="6" placeholder="Escribe el enunciado completo o la situación estadística a analizar."></textarea>
+
+        <div class="question-fields">
+          <label for="problem-question-1">Pregunta 1</label>
+          <input id="problem-question-1" type="text" placeholder="Ejemplo: ¿Cuál es la probabilidad de que... ?" maxlength="220" />
+
+          <label for="problem-question-2">Pregunta 2</label>
+          <input id="problem-question-2" type="text" placeholder="Opcional" maxlength="220" />
+
+          <label for="problem-question-3">Pregunta 3</label>
+          <input id="problem-question-3" type="text" placeholder="Opcional" maxlength="220" />
+
+          <label for="problem-question-4">Pregunta 4</label>
+          <input id="problem-question-4" type="text" placeholder="Opcional" maxlength="220" />
+
+          <label for="problem-question-5">Pregunta 5</label>
+          <input id="problem-question-5" type="text" placeholder="Opcional" maxlength="220" />
+        </div>
+
+        <div class="action-row">
+          <button id="analyze-problem-button" class="button primary">Analizar problema</button>
+          <button id="reset-problem-button" class="button secondary">Limpiar</button>
+        </div>
+        <div id="problem-analysis" class="analysis-output"></div>
+      </section>
+
+      <section class="card exercise-header">
+        <span class="eyebrow">Resultado</span>
+        <h1 id="exercise-title">Sin ejercicio cargado</h1>
+        <div class="chips">
+          <span id="exercise-distribution" class="chip">Distribución: pendiente</span>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <article class="card section-block">
+          <h2>Enunciado</h2>
+          <p id="exercise-enunciado">Escribe un problema para identificar la distribución y obtener una estimación inicial de resolución.</p>
+          <div id="exercise-params" class="param-list"></div>
+        </article>
+
+        <aside class="card section-block">
+          <h2>Operaciones</h2>
+          <div id="exercise-operations" class="operation-list"></div>
+        </aside>
+      </section>
+
+      <section class="card section-block">
+        <h2>Resultados</h2>
+        <div class="result-layout">
+          <div>
+            <label for="exercise-select">Seleccionar operación</label>
+            <select id="exercise-select"></select>
+          </div>
+          <div>
+            <button id="calculate-button" class="button primary">Calcular</button>
+          </div>
+        </div>
+        <div id="result-box" class="result-box"></div>
+      </section>
+
+      <section id="assistant" class="card section-block assistant-panel">
+        <h2>Pregunta directamente a Gemini</h2>
+        <p>Escribe tu duda sobre el enunciado o los resultados. La IA responderá en este recuadro.</p>
+        <form id="assistant-form">
+          <label for="assistant-question">Tu pregunta</label>
+          <textarea id="assistant-question" rows="3" maxlength="1000" required placeholder="Ejemplo: ¿Cumple el sistema el requisito de disponibilidad del 95 %?"></textarea>
+          <div class="assistant-actions">
+            <button id="assistant-button" class="button secondary" type="submit">Enviar pregunta a Gemini</button>
+          </div>
+        </form>
+        <div id="assistant-output" class="assistant-output" aria-live="polite">
+          La respuesta de la IA aparecerá aquí.
+        </div>
+      </section>
+      </div>
+
+      <section id="panel-videos" class="workspace-panel card section-block media-library" role="tabpanel" aria-labelledby="tab-videos" data-workspace-panel="videos" hidden>
+        <span class="eyebrow">Biblioteca multimedia</span>
+        <h1>Videos de apoyo</h1>
+        <p>Selecciona videos desde tu dispositivo para previsualizarlos en esta sesión.</p>
+        <label for="video-upload">Cargar videos</label>
+        <input id="video-upload" type="file" accept="video/*" multiple />
+        <p class="helper-text">La selección es local y no se conserva al cerrar o recargar esta página.</p>
+        <div id="video-library" class="video-library-grid" aria-live="polite">
+          <p class="empty-state">Los videos que selecciones aparecerán aquí.</p>
+        </div>
+      </section>
+
+      <section id="panel-resueltos" class="workspace-panel card section-block solved-exercises" role="tabpanel" aria-labelledby="tab-resueltos" data-workspace-panel="resueltos" hidden>
+        <span class="eyebrow">Material de práctica</span>
+        <h1>Ejercicios resueltos</h1>
+        <p>En esta sección estará disponible el documento con la práctica resuelta.</p>
+        <div class="pdf-placeholder">
+          <div class="pdf-icon" aria-hidden="true">PDF</div>
+          <div>
+            <h2>Documento de ejercicios resueltos</h2>
+            <p>El archivo se agregará cuando esté disponible.</p>
+          </div>
+          <button class="button primary" type="button" disabled>Descargar PDF próximamente</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-content">
+        <span>Desarrollador: Julia María Sierra Morales</span>
+        <span>Carrera: Ingeniería en Sistemas</span>
+        <span>Asignatura: Estadística II</span>
+        <span>Sección B</span>
+        <span>Año: 2026</span>
+      </div>
+    </footer>
+
+    <script src="/public/js/app.js"></script>
+    <script src="/public/js/charts.js"></script>
+    <script src="/public/js/assistant.js"></script>
+    <script src="/public/js/exercises.js"></script>
+    <script src="/public/js/workspace.js"></script>
+  </body>
+</html>
