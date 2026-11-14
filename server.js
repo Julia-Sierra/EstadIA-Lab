@@ -7,12 +7,13 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const allowedOrigins = new Set(
-  (process.env.CORS_ALLOWED_ORIGINS || '')
+const allowedOrigins = new Set([
+  'https://julia-sierra.github.io',
+  ...(process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
-);
+]);
 
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {

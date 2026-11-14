@@ -200,10 +200,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statement, questions })
       });
-      const payload = await response.json();
+      const payload = await response.json().catch(() => null);
 
-      if (!payload.ok || !payload.analysis) {
-        problemAnalysis.textContent = payload.message || 'No se pudo resolver el problema.';
+      if (!response.ok || !payload?.ok || !payload.analysis) {
+        problemAnalysis.textContent = payload?.message || `El servidor respondió con HTTP ${response.status}.`;
         return;
       }
 
@@ -253,7 +253,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentExercise = null;
       activeOperation = null;
     } catch (error) {
-      problemAnalysis.textContent = 'Ocurrió un error al analizar el problema.';
+      console.error('No se pudo analizar el problema:', error);
+      problemAnalysis.textContent = error instanceof TypeError
+        ? 'No se pudo conectar con la API. Verifica el dominio del backend y la configuración CORS.'
+        : error.message || 'Ocurrió un error al analizar el problema.';
     }
   }
 

@@ -3,7 +3,14 @@ window.ESTADIA = window.ESTADIA || {};
 const configuredApiEndpoint = typeof window.API_ENDPOINT === 'string'
   ? window.API_ENDPOINT.trim()
   : '/api';
-window.ESTADIA.API_ENDPOINT = configuredApiEndpoint.replace(/\/+$/, '');
+const apiEndpointBase = configuredApiEndpoint
+  .replace(/\/+$/, '')
+  .replace(/\/(?:exercises|gemini)$/i, '');
+window.ESTADIA.API_ENDPOINT = !apiEndpointBase
+  ? ''
+  : /\/api$/i.test(apiEndpointBase)
+    ? apiEndpointBase
+    : `${apiEndpointBase}/api`;
 window.ESTADIA.apiUrl = (path) => {
   if (!window.ESTADIA.API_ENDPOINT) {
     throw new Error('Configura la variable API_ENDPOINT con la URL del backend.');

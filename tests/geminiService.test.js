@@ -31,17 +31,17 @@ test('Gemini fallback is used only after a primary model 503 and keeps the key o
 
   const response = await generateGeminiResponse('Responde directamente.');
 
-  assert.equal(response.model, 'gemini-2.5-flash-lite');
+  assert.equal(response.model, 'gemini-2.5-flash');
   assert.equal(response.explanation, 'Respuesta de respaldo.');
   assert.deepEqual(requests.map((request) => new URL(request.url).pathname), [
-    '/v1beta/models/gemini-3.5-flash-lite:generateContent',
-    '/v1beta/models/gemini-2.5-flash-lite:generateContent'
+    '/v1beta/models/gemini-2.5-flash-lite:generateContent',
+    '/v1beta/models/gemini-2.5-flash:generateContent'
   ]);
   assert.equal(new URL(requests[0].url).search, '');
   assert.equal(requests[0].options.headers['x-goog-api-key'], 'test-secret');
 });
 
-test('Gemini does not use the fallback for non-503 errors', async (context) => {
+test('Gemini uses the fallback for any upstream HTTP error', async (context) => {
   const originalFetch = global.fetch;
   const originalApiKey = process.env.GEMINI_API_KEY;
   context.after(() => {
@@ -54,12 +54,14 @@ test('Gemini does not use the fallback for non-503 errors', async (context) => {
   let requests = 0;
   global.fetch = async () => {
     requests += 1;
-    return { ok: false, status: 400, text: async () => 'invalid request' };
+    if (requests === 1) {
+      return { ok: false, status: 429, text: async () => 'rate limited' };
+    }
+    return successfulResponse('Respuesta de respaldo.');
   };
 
-  await assert.rejects(
-    generateGeminiResponse('Responde directamente.'),
-    (error) => error.statusCode === 502 && error.message.includes('HTTP 400')
-  );
-  assert.equal(requests, 1);
+  const response = await generateGeminiResponse('Responde directamente.');
+  assert.equal(response.model, 'gemini-2.5-flash');
+  assert.equal(response.explanation, 'Respuesta de respaldo.');
+  assert.equal(requests, 2);
 });

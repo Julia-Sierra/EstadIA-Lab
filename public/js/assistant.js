@@ -22,12 +22,15 @@ window.ESTADIA.askAssistant = async (context) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt })
     });
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) {
-      throw new Error(payload.message || 'No se pudo generar la respuesta con Gemini.');
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.message || `El servidor respondió con HTTP ${response.status}.`);
     }
     output.textContent = payload.explanation || 'Gemini no devolvió una respuesta.';
   } catch (error) {
-    output.textContent = error.message || 'No se pudo conectar con Gemini.';
+    console.error('No se pudo enviar la pregunta a Gemini:', error);
+    output.textContent = error instanceof TypeError
+      ? 'No se pudo conectar con la API de Gemini. Verifica el dominio del backend y la configuración CORS.'
+      : error.message || 'No se pudo conectar con Gemini.';
   }
 };

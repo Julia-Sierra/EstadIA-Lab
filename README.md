@@ -83,7 +83,7 @@ http://localhost:3000
 
 ## Configuración de Gemini
 Crea un archivo `.env` basado en `.env.example` con tu clave GEMINI_API_KEY.
-La clave se utiliza solo en el servidor. El servicio intenta `gemini-3.5-flash-lite` y usa `gemini-2.5-flash-lite` si el principal devuelve HTTP 503.
+La clave se utiliza solo en el servidor. El servicio intenta `gemini-2.5-flash-lite` y usa `gemini-2.5-flash` si el principal devuelve un error HTTP.
 
 ```env
 PORT=3000
@@ -94,8 +94,8 @@ GEMINI_API_KEY=tu_clave
 GitHub Pages sirve la interfaz estática; Vercel sirve las funciones API de `/api` y el backend Express que usa el resto de la aplicación.
 
 1. Importa este repositorio en Vercel, conservando la raíz del proyecto. Vercel detectará `api/gemini.js` y `api/[...path].js`.
-2. En la configuración del proyecto Vercel, define `GEMINI_API_KEY` como variable secreta y `CORS_ALLOWED_ORIGINS` con el origen de Pages: `https://julia-sierra.github.io`.
-3. Despliega Vercel y copia su dominio. En GitHub, agrega la variable de repositorio `API_ENDPOINT` en **Settings → Secrets and variables → Actions → Variables**, con el valor `https://<dominio-vercel>/api`.
+2. En la configuración del proyecto Vercel, define `GEMINI_API_KEY` como variable secreta y `CORS_ALLOWED_ORIGINS` con el origen de Pages: `https://julia-sierra.github.io` (sin ruta ni barra final).
+3. Despliega Vercel y copia el dominio de proyecto, por ejemplo `https://estadialab.vercel.app`. En GitHub, agrega la variable de repositorio `API_ENDPOINT` en **Settings → Secrets and variables → Actions → Variables**, con el valor `https://<dominio-vercel>/api`.
 4. En **Settings → Pages**, selecciona **GitHub Actions** como fuente. El workflow `.github/workflows/deploy.yml` publica la interfaz en cada push a `main`.
 
 La URL del sitio será `https://julia-sierra.github.io/EstadIA-Lab/`. Si `API_ENDPOINT` aún no está configurado, la interfaz se publica pero las funciones API no estarán disponibles. No subas `.env` a GitHub; configura `GEMINI_API_KEY` únicamente en el entorno de Vercel.

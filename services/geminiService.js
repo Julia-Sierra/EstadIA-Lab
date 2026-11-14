@@ -1,5 +1,5 @@
-const PRIMARY_MODEL = 'gemini-3.5-flash-lite';
-const FALLBACK_MODEL = 'gemini-2.5-flash-lite';
+const PRIMARY_MODEL = 'gemini-2.5-flash-lite';
+const FALLBACK_MODEL = 'gemini-2.5-flash';
 const MODEL_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_PROMPT_CHARS = 12000;
 
@@ -29,9 +29,8 @@ async function requestModel(prompt, model, apiKey) {
 
   if (!response.ok) {
     const details = await response.text();
-    const error = response.status === 503
-      ? createError(`El modelo ${model} no está disponible temporalmente.`, 503)
-      : createError(`Gemini respondió con HTTP ${response.status}: ${details}`, 502);
+    const error = createError(`Gemini respondió con HTTP ${response.status}: ${details}`, 502);
+    error.upstreamHttpStatus = response.status;
     throw error;
   }
 
@@ -60,13 +59,13 @@ async function generateGeminiResponse(prompt) {
   try {
     return await requestModel(prompt.trim(), PRIMARY_MODEL, apiKey);
   } catch (error) {
-    if (error.statusCode !== 503) throw error;
+    if (!Number.isInteger(error.upstreamHttpStatus)) throw error;
   }
 
   try {
     return await requestModel(prompt.trim(), FALLBACK_MODEL, apiKey);
   } catch (error) {
-    if (error.statusCode === 503) {
+    if (error.upstreamHttpStatus === 503) {
       throw createError('Los modelos de Gemini están temporalmente saturados. Intenta de nuevo más tarde.', 503);
     }
     throw error;

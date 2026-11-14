@@ -1,11 +1,12 @@
 const { generateGeminiResponse } = require('../services/geminiService');
 
-const allowedOrigins = new Set(
-  (process.env.CORS_ALLOWED_ORIGINS || '')
+const allowedOrigins = new Set([
+  'https://julia-sierra.github.io',
+  ...(process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
-);
+]);
 
 module.exports = async function geminiHandler(req, res) {
   const origin = req.headers.origin;
