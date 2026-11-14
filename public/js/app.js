@@ -1,5 +1,16 @@
 window.ESTADIA = window.ESTADIA || {};
 
+const configuredApiEndpoint = typeof window.API_ENDPOINT === 'string'
+  ? window.API_ENDPOINT.trim()
+  : '/api';
+window.ESTADIA.API_ENDPOINT = configuredApiEndpoint.replace(/\/+$/, '');
+window.ESTADIA.apiUrl = (path) => {
+  if (!window.ESTADIA.API_ENDPOINT) {
+    throw new Error('Configura la variable API_ENDPOINT con la URL del backend.');
+  }
+  return `${window.ESTADIA.API_ENDPOINT}/${String(path).replace(/^\/+/, '')}`;
+};
+
 window.ESTADIA.formatPercent = (value) => `${Number(value || 0).toFixed(4)}%`;
 
 window.ESTADIA.renderParamList = (params) => {

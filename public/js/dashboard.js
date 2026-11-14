@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const analysisResult = document.getElementById('analysis-result');
 
   try {
-    const response = await fetch('/api/exercises');
+    const response = await fetch(window.ESTADIA.apiUrl('exercises'));
     const data = await response.json();
     const exercises = data.exercises || [];
 
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     analysisResult.textContent = 'Analizando el texto e identificando la distribución...';
 
     try {
-      const response = await fetch('/api/solve-problem', {
+      const response = await fetch(window.ESTADIA.apiUrl('solve-problem'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })

@@ -21,6 +21,7 @@ router.post('/solve-problem', (req, res) => {
   }
 });
 router.post('/simulate', simulationController.runSimulation);
+router.post('/gemini', geminiController.explain);
 router.post('/gemini/explain', geminiController.explain);
 
 module.exports = router;

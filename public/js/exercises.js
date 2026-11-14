@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function fetchExercise(id) {
-    const response = await fetch(`/api/exercises/${id}`);
+    const response = await fetch(window.ESTADIA.apiUrl(`exercises/${encodeURIComponent(id)}`));
     const payload = await response.json();
     currentExercise = payload.exercise;
     renderExercise(currentExercise);
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function fetchAnalysis(text) {
-    const response = await fetch('/api/analyze', {
+    const response = await fetch(window.ESTADIA.apiUrl('analyze'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function calculateSelectedOperation() {
     if (!currentExercise || !activeOperation) return;
     const selected = currentExercise.operations.find((item) => item.key === activeOperation) || currentExercise.operations[0];
-    const response = await fetch('/api/calculate', {
+    const response = await fetch(window.ESTADIA.apiUrl('calculate'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     problemAnalysis.textContent = 'Analizando el problema y detectando la distribución...';
 
     try {
-      const response = await fetch('/api/solve-problem', {
+      const response = await fetch(window.ESTADIA.apiUrl('solve-problem'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statement, questions })

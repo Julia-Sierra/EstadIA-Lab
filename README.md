@@ -83,16 +83,21 @@ http://localhost:3000
 
 ## Configuración de Gemini
 Crea un archivo `.env` basado en `.env.example` con tu clave GEMINI_API_KEY.
-Para que el asistente responda preguntas libres, el servidor necesita acceso a internet hacia la API de Gemini y una clave válida. Sin esa configuración, la aplicación mostrará un aviso y no simulará respuestas de Gemini.
+La clave se utiliza solo en el servidor. El servicio intenta `gemini-3.5-flash-lite` y usa `gemini-2.5-flash-lite` si el principal devuelve HTTP 503.
 
 ```env
 PORT=3000
 GEMINI_API_KEY=tu_clave
-GEMINI_MODEL=gemini-2.0-flash
 ```
 
-## Despliegue
-La app está lista para desplegarse en Render como servicio web Node.js.
-- Usa el comando `npm start`.
-- Configura la variable `GEMINI_API_KEY` en el panel de Render.
-- La aplicación escucha en `process.env.PORT`.
+## Despliegue en GitHub Pages y Vercel
+GitHub Pages sirve la interfaz estática; Vercel sirve las funciones API de `/api` y el backend Express que usa el resto de la aplicación.
+
+1. Importa este repositorio en Vercel, conservando la raíz del proyecto. Vercel detectará `api/gemini.js` y `api/[...path].js`.
+2. En la configuración del proyecto Vercel, define `GEMINI_API_KEY` como variable secreta y `CORS_ALLOWED_ORIGINS` con el origen de Pages: `https://julia-sierra.github.io`.
+3. Despliega Vercel y copia su dominio. En GitHub, agrega la variable de repositorio `API_ENDPOINT` en **Settings → Secrets and variables → Actions → Variables**, con el valor `https://<dominio-vercel>/api`.
+4. En **Settings → Pages**, selecciona **GitHub Actions** como fuente. El workflow `.github/workflows/deploy.yml` publica la interfaz en cada push a `main`.
+
+La URL del sitio será `https://julia-sierra.github.io/EstadIA-Lab/`. Si `API_ENDPOINT` aún no está configurado, la interfaz se publica pero las funciones API no estarán disponibles. No subas `.env` a GitHub; configura `GEMINI_API_KEY` únicamente en el entorno de Vercel.
+
+Para desarrollo local, ejecuta `npm install` y `npm start`. La aplicación usará `/api` en el mismo servidor Express.

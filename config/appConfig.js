@@ -10,7 +10,7 @@ module.exports = {
     copyright: '© 2026 EstadIA Lab. Todos los derechos reservados.'
   },
   gemini: {
-    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash'
+    model: 'gemini-3.5-flash-lite'
   },
   stats: {
     distributions: ['Binomial', 'Binomial negativa', 'Poisson', 'Exponencial', 'Normal'],
