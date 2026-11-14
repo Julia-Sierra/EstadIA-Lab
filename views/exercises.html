@@ -115,27 +115,53 @@
       <section id="panel-videos" class="workspace-panel card section-block media-library" role="tabpanel" aria-labelledby="tab-videos" data-workspace-panel="videos" hidden>
         <span class="eyebrow">Biblioteca multimedia</span>
         <h1>Videos de apoyo</h1>
-        <p>Selecciona videos desde tu dispositivo para previsualizarlos en esta sesión.</p>
-        <label for="video-upload">Cargar videos</label>
-        <input id="video-upload" type="file" accept="video/*" multiple />
-        <p class="helper-text">La selección es local y no se conserva al cerrar o recargar esta página.</p>
-        <div id="video-library" class="video-library-grid" aria-live="polite">
-          <p class="empty-state">Los videos que selecciones aparecerán aquí.</p>
+        <p>Consulta los videos de apoyo de las distribuciones binomial y de Poisson.</p>
+        <div class="video-library-grid">
+          <article class="video-card">
+            <h2>Situación 4: Distribución binomial</h2>
+            <iframe
+              src="https://www.youtube.com/embed/seMoCoE26VQ"
+              title="Situación 4: Distribución binomial"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
+          </article>
+          <article class="video-card">
+            <h2>Situación 5: Distribución de Poisson</h2>
+            <iframe
+              src="https://www.youtube.com/embed/2tZZpbe-Qsg"
+              title="Situación 5: Distribución de Poisson"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
+          </article>
         </div>
       </section>
 
       <section id="panel-resueltos" class="workspace-panel card section-block solved-exercises" role="tabpanel" aria-labelledby="tab-resueltos" data-workspace-panel="resueltos" hidden>
         <span class="eyebrow">Material de práctica</span>
         <h1>Ejercicios resueltos</h1>
-        <p>En esta sección estará disponible el documento con la práctica resuelta.</p>
+        <p>Visualiza el documento en esta página o descárgalo para consultarlo después.</p>
         <div class="pdf-placeholder">
           <div class="pdf-icon" aria-hidden="true">PDF</div>
           <div>
             <h2>Documento de ejercicios resueltos</h2>
-            <p>El archivo se agregará cuando esté disponible.</p>
+            <p>Ejercicios resueltos manuscritos</p>
           </div>
-          <button class="button primary" type="button" disabled>Descargar PDF próximamente</button>
+          <a class="button primary" href="./public/documents/ejerciciosResueltosManuscrito.pdf" download>Descargar PDF</a>
         </div>
+        <iframe
+          class="pdf-viewer"
+          src="./public/documents/ejerciciosResueltosManuscrito.pdf#view=FitH"
+          title="Vista previa de ejercicios resueltos"
+          loading="lazy"
+        >
+          <p>Tu navegador no puede mostrar el PDF. <a href="./public/documents/ejerciciosResueltosManuscrito.pdf">Abre el documento aquí</a>.</p>
+        </iframe>
       </section>
     </main>
 
