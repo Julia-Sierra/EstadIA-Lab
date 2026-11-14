@@ -37,7 +37,7 @@ window.ESTADIA.renderParamList = (params) => {
     unidadPregunta: 'Unidad solicitada'
   };
   const entries = Object.entries(params || {})
-    .filter(([key]) => !key.startsWith('valor') && !key.startsWith('dimension'))
+    .filter(([key]) => key !== 'ajusteAplicado' && !key.startsWith('valor') && !key.startsWith('dimension'))
     .map(([key, value]) => [labels[key] || key, value]);
   if (!entries.length) return '<div class="param-item">Sin parámetros adicionales.</div>';
   return entries
