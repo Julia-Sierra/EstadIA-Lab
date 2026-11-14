@@ -27,8 +27,9 @@ function extractNumberFromText(text, fallback) {
 }
 
 function findQuestionTargetByKeyword(text, fallback = 0) {
-  const normalizedText = (text || '').toLowerCase();
+  const normalizedText = normalizePoissonText(text);
   const patterns = [
+    /\b(\d+(?:[.,]\d+)?)\s+(?:(?:o|u)\s+mas|or\s+more)\b/i,
     /(?:exactamente|exactly|igual a|igual(?:mente)?|es de)\s*(\d+(?:[.,]\d+)?)/i,
     /(?:como máximo|a lo sumo|no supere|maximo|at most|no more than)\s*(\d+(?:[.,]\d+)?)/i,
     /(?:al menos|por lo menos|mas de|más de|supera|mayor que|at least|more than|greater than)\s*(\d+(?:[.,]\d+)?)/i,
@@ -51,6 +52,13 @@ function findQuestionTargetByKeyword(text, fallback = 0) {
   }
 
   return fallback;
+}
+
+function isBinomialAtLeastExpression(text) {
+  const normalizedText = normalizePoissonText(text);
+  return /\b(?:al menos|por lo menos|como minimo|at least|no fewer than)\b/.test(normalizedText)
+    || /\b\d+(?:[.,]\d+)?\s+(?:(?:o|u)\s+mas|or\s+more)\b/.test(normalizedText)
+    || /(?:>=|≥)/.test(normalizedText);
 }
 
 const UNIT_DEFINITIONS = [
@@ -377,11 +385,14 @@ function inferParamsByDistribution(
     const nValue = /\b(\d+)\s*(componentes|ensayos|intentos|elementos|servidores)\b/.exec(normalizedText);
     const n = nValue ? Number(nValue[1]) : 12;
     const normalizedQuestion = String(questionText || '').toLowerCase();
-    const xValue = findQuestionTargetByKeyword(
+    const questionTarget = findQuestionTargetByKeyword(
       normalizedQuestion,
       /exactamente\s*(\d+)/.exec(normalizedQuestion)?.[1]
         || /\b(\d+)\s*(exitos|vulnerabilidades|fallas|servidores)\b/.exec(normalizedQuestion)?.[1]
+        || null
     );
+    const contextualTarget = findQuestionTargetByKeyword(contextText, null);
+    const xValue = questionTarget ?? contextualTarget;
     return { n, p: pValue, x: xValue == null ? 3 : Number(xValue) };
   }
 
@@ -547,7 +558,7 @@ function computeDistributionResult(distribution, params, questionText = '', cont
       operation = 'P(X = x)';
       formula = `C(${n}, ${x}) * ${p}^{${x}} * (1 - ${p})^(${n} - ${x})`;
       result = binomialExact(n, p, x);
-    } else if (richQuestion.includes('al menos') || richQuestion.includes('por lo menos')) {
+    } else if (isBinomialAtLeastExpression(richQuestion)) {
       const lowerTailLimit = Math.ceil(x) - 1;
       const minimumSuccesses = lowerTailLimit + 1;
       operation = `P(X >= ${minimumSuccesses})`;
@@ -557,7 +568,7 @@ function computeDistributionResult(distribution, params, questionText = '', cont
       operation = `P(X > ${x})`;
       formula = `P(X > ${x}) = 1 - P(X <= ${x})`;
       result = 1 - binomialCdf(n, p, x);
-    } else if (contextLower.includes('al menos') || contextLower.includes('por lo menos')) {
+    } else if (isBinomialAtLeastExpression(contextLower)) {
       const lowerTailLimit = Math.ceil(x) - 1;
       const minimumSuccesses = lowerTailLimit + 1;
       operation = `P(X >= ${minimumSuccesses})`;

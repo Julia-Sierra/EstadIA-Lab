@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { getExerciseById } = require('../models/exerciseModel');
-const { binomialExact, poissonCdf, poissonProbability } = require('../models/distributionModels');
+const { binomialExact, binomialCdf, poissonCdf, poissonProbability } = require('../models/distributionModels');
 const { calculateExercise, solveProblem } = require('../services/statisticsService');
 
 const statement = getExerciseById(4).enunciado;
@@ -41,6 +41,36 @@ test('"al menos 5" and "más de 5" produce distinct binomial events', () => {
   assert.equal(solution.answers[1].operation, 'P(X > 5)');
   assert.equal(solution.answers[1].formula, 'P(X > 5) = 1 - P(X <= 5)');
   assert.ok(Math.abs(solution.answers[1].result - sumAtLeast(6)) < 1e-10);
+});
+
+test('binomial handles x-or-more questions and applies the statement policy threshold', () => {
+  const binomialStatement = 'Se seleccionan 18 componentes. Cada uno tiene 12 % de probabilidad de presentar una vulnerabilidad crítica. Si se detectan 4 o más componentes vulnerables, se suspende la liberación.';
+  const solution = solveProblem({
+    statement: binomialStatement,
+    questions: [
+      'Determine la probabilidad de encontrar exactamente 3 componentes con vulnerabilidades críticas.',
+      'Calcule la probabilidad de que se encuentren como máximo 2 componentes vulnerables.',
+      'Determine la probabilidad de que se active la política de suspensión del lanzamiento.',
+      'Calcule la probabilidad de que al menos 1 componente presente una vulnerabilidad crítica.'
+    ]
+  });
+
+  assert.equal(solution.answers[0].result, Number(binomialExact(18, 0.12, 3).toFixed(10)));
+  assert.equal(solution.answers[1].result, Number(binomialCdf(18, 0.12, 2).toFixed(10)));
+  assert.equal(solution.answers[2].params.x, 4);
+  assert.equal(solution.answers[2].operation, 'P(X >= 4)');
+  assert.equal(solution.answers[2].formula, 'P(X >= 4) = 1 - P(X <= 3)');
+  assert.equal(solution.answers[2].result, Number((1 - binomialCdf(18, 0.12, 3)).toFixed(10)));
+  assert.equal(solution.answers[3].operation, 'P(X >= 1)');
+  assert.equal(solution.answers[3].formula, 'P(X >= 1) = 1 - P(X <= 0)');
+  assert.equal(solution.answers[3].result, Number((1 - binomialCdf(18, 0.12, 0)).toFixed(10)));
+
+  const explicitAtLeast = solveProblem({
+    statement: binomialStatement,
+    questions: ['Calcule la probabilidad de encontrar 4 o más componentes vulnerables.']
+  });
+  assert.equal(explicitAtLeast.operation, 'P(X >= 4)');
+  assert.equal(explicitAtLeast.result, Number((1 - binomialCdf(18, 0.12, 3)).toFixed(10)));
 });
 
 test('Poisson questions recalculate lambda for each requested interval', () => {
