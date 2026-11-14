@@ -83,7 +83,7 @@ http://localhost:3000
 
 ## Configuración de Gemini
 Crea un archivo `.env` basado en `.env.example` con tu clave GEMINI_API_KEY.
-La clave se utiliza solo en el servidor. El servicio intenta `gemini-2.5-flash-lite` y usa `gemini-2.5-flash` si el principal devuelve un error HTTP.
+La clave se utiliza solo en el servidor. El servicio usa la Interactions API con `gemini-3.8-flash` y recurre a `gemini-3.5-flash-lite` si el modelo principal devuelve un error HTTP.
 
 ```env
 PORT=3000

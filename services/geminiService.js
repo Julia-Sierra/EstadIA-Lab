@@ -1,6 +1,6 @@
-const PRIMARY_MODEL = 'gemini-2.5-flash-lite';
-const FALLBACK_MODEL = 'gemini-2.5-flash';
-const MODEL_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const PRIMARY_MODEL = 'gemini-3.8-flash';
+const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+const INTERACTIONS_API_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MAX_PROMPT_CHARS = 12000;
 
 function createError(message, statusCode) {
@@ -10,21 +10,14 @@ function createError(message, statusCode) {
 }
 
 async function requestModel(prompt, model, apiKey) {
-  const response = await fetch(`${MODEL_API_URL}/${model}:generateContent`, {
+  const response = await fetch(INTERACTIONS_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey
+      'x-goog-api-key': apiKey,
+      'Api-Revision': '2026-05-20'
     },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        topP: 0.9,
-        topK: 30,
-        maxOutputTokens: 500
-      }
-    })
+    body: JSON.stringify({ model, input: prompt, store: false })
   });
 
   if (!response.ok) {
@@ -35,7 +28,13 @@ async function requestModel(prompt, model, apiKey) {
   }
 
   const data = await response.json();
-  const explanation = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const explanation = data?.steps
+    ?.filter((step) => step.type === 'model_output')
+    .flatMap((step) => step.content || [])
+    .filter((content) => content.type === 'text' && typeof content.text === 'string')
+    .map((content) => content.text)
+    .join('')
+    .trim();
   if (!explanation) {
     throw createError('Gemini no devolvió una respuesta de texto.', 502);
   }

@@ -4,7 +4,9 @@ const { generateGeminiResponse } = require('../services/geminiService');
 
 const successfulResponse = (text) => ({
   ok: true,
-  json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] })
+  json: async () => ({
+    steps: [{ type: 'model_output', content: [{ type: 'text', text }] }]
+  })
 });
 
 const unavailableResponse = () => ({
@@ -31,14 +33,20 @@ test('Gemini fallback is used only after a primary model 503 and keeps the key o
 
   const response = await generateGeminiResponse('Responde directamente.');
 
-  assert.equal(response.model, 'gemini-2.5-flash');
+  assert.equal(response.model, 'gemini-3.5-flash-lite');
   assert.equal(response.explanation, 'Respuesta de respaldo.');
-  assert.deepEqual(requests.map((request) => new URL(request.url).pathname), [
-    '/v1beta/models/gemini-2.5-flash-lite:generateContent',
-    '/v1beta/models/gemini-2.5-flash:generateContent'
+  assert.deepEqual(requests.map((request) => request.url), [
+    'https://generativelanguage.googleapis.com/v1beta/interactions',
+    'https://generativelanguage.googleapis.com/v1beta/interactions'
+  ]);
+  assert.deepEqual(requests.map((request) => JSON.parse(request.options.body).model), [
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite'
   ]);
   assert.equal(new URL(requests[0].url).search, '');
   assert.equal(requests[0].options.headers['x-goog-api-key'], 'test-secret');
+  assert.equal(requests[0].options.headers['Api-Revision'], '2026-05-20');
+  assert.equal(JSON.parse(requests[0].options.body).store, false);
 });
 
 test('Gemini uses the fallback for any upstream HTTP error', async (context) => {
@@ -61,7 +69,7 @@ test('Gemini uses the fallback for any upstream HTTP error', async (context) => 
   };
 
   const response = await generateGeminiResponse('Responde directamente.');
-  assert.equal(response.model, 'gemini-2.5-flash');
+  assert.equal(response.model, 'gemini-3.5-flash-lite');
   assert.equal(response.explanation, 'Respuesta de respaldo.');
   assert.equal(requests, 2);
 });
