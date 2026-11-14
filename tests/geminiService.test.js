@@ -46,6 +46,10 @@ test('Gemini fallback is used only after a primary model 503 and keeps the key o
   assert.equal(new URL(requests[0].url).search, '');
   assert.equal(requests[0].options.headers['x-goog-api-key'], 'test-secret');
   assert.equal(requests[0].options.headers['Api-Revision'], '2026-05-20');
+  assert.deepEqual(JSON.parse(requests[0].options.body).generation_config, {
+    thinking_level: 'low',
+    max_output_tokens: 500
+  });
   assert.equal(JSON.parse(requests[0].options.body).store, false);
 });
 

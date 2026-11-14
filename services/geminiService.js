@@ -17,7 +17,15 @@ async function requestModel(prompt, model, apiKey) {
       'x-goog-api-key': apiKey,
       'Api-Revision': '2026-05-20'
     },
-    body: JSON.stringify({ model, input: prompt, store: false })
+    body: JSON.stringify({
+      model,
+      input: prompt,
+      store: false,
+      generation_config: {
+        thinking_level: 'low',
+        max_output_tokens: 500
+      }
+    })
   });
 
   if (!response.ok) {
