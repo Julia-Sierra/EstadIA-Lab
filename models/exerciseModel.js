@@ -32,10 +32,10 @@ const exercises = [
     params: { ratePer15: 9, intervalMinutes: 20, alternativeMinutes: 5, threshold: 15 },
     enunciado: 'Un Centro de Operaciones de Seguridad (SOC) monitorea la infraestructura tecnológica de una organización. Los registros indican que se producen, en promedio, 9 alertas de seguridad cada 15 minutos. Se supone que las alertas ocurren independientemente y con una tasa promedio constante durante el período estudiado. El sistema de monitoreo considera que existe una posible situación de riesgo elevado cuando se registran más de 15 alertas durante 20 minutos.',
     operations: [
-      { key: 'mean_20', label: 'E[X] para 20 min', description: 'Número promedio de alertas durante 20 minutos.', formula: 'λ = 9 * (20 / 15)' },
-      { key: 'exacta_12', label: 'P(X=12)', description: 'Probabilidad de registrar exactamente 12 alertas durante 20 minutos.', formula: '(e^-12 * 12^12) / 12!' },
-      { key: 'risk_20', label: 'P(X > 15)', description: 'Probabilidad de riesgo elevado en 20 minutos.', formula: '1 - P(X <= 15)' },
-      { key: 'max_3_5min', label: 'P(X <= 3)', description: 'Probabilidad de recibir como máximo 3 alertas en 5 minutos.', formula: 'sum_{x=0}^{3} e^{-3}*3^x/x!' }
+      { key: 'mean_20', label: 'E[X] para 20 min', description: 'Número promedio de alertas durante 20 minutos.', formula: 'λ ajustado = 9 × (20 / 15) = 12 alertas' },
+      { key: 'exacta_12', label: 'P(X=12)', description: 'Probabilidad de registrar exactamente 12 alertas durante 20 minutos.', formula: 'λ ajustado = 9 × (20 / 15) = 12; P(X=12) = (e^-12 × 12^12) / 12!' },
+      { key: 'risk_20', label: 'P(X > 15)', description: 'Probabilidad de riesgo elevado en 20 minutos.', formula: 'λ ajustado = 9 × (20 / 15) = 12; 1 - P(X <= 15)' },
+      { key: 'max_3_5min', label: 'P(X <= 3)', description: 'Probabilidad de recibir como máximo 3 alertas en 5 minutos.', formula: 'λ ajustado = 9 × (5 / 15) = 3; sum_{x=0}^{3} e^{-3}*3^x/x!' }
     ]
   },
   {
@@ -57,10 +57,10 @@ const exercises = [
     params: { ratePer3Min: 18, intervalMinutes: 1, alternativeIntervalSeconds: 30, threshold: 10 },
     enunciado: 'Una empresa desarrolló una API REST que permite consultar información de inventarios en tiempo real. El equipo de desarrollo ha observado que, durante determinados períodos, el sistema recibe en promedio 18 solicitudes cada 3 minutos. Se considera que las solicitudes llegan independientemente y con una tasa promedio constante durante el período analizado. El servidor dispone de un mecanismo de protección que genera una alerta cuando recibe más de 10 solicitudes en un minuto.',
     operations: [
-      { key: 'mean_1min', label: 'E[X] en 1 minuto', description: 'Cantidad promedio de solicitudes esperadas durante un minuto.', formula: 'λ = 18 / 3' },
-      { key: 'exacta_8', label: 'P(X=8)', description: 'Probabilidad de que exactamente 8 solicitudes lleguen durante un minuto.', formula: '(e^-6 * 6^8) / 8!' },
-      { key: 'alerta_1min', label: 'P(X > 10)', description: 'Probabilidad de activar la alerta en un minuto.', formula: '1 - P(X <= 10)' },
-      { key: 'zero_30s', label: 'P(X=0) en 30s', description: 'Probabilidad de recibir 0 solicitudes durante 30 segundos.', formula: 'e^{-3}' }
+      { key: 'mean_1min', label: 'E[X] en 1 minuto', description: 'Cantidad promedio de solicitudes esperadas durante un minuto.', formula: 'λ₁ = (18 / 3) × 1 = 6 solicitudes' },
+      { key: 'exacta_8', label: 'P(X=8)', description: 'Probabilidad de que exactamente 8 solicitudes lleguen durante un minuto.', formula: 'λ₁ = (18 / 3) × 1 = 6; P(X=8) = (e^-6 × 6^8) / 8!' },
+      { key: 'alerta_1min', label: 'P(X > 10)', description: 'Probabilidad de activar la alerta en un minuto.', formula: 'λ₁ = (18 / 3) × 1 = 6; P(X > 10) = 1 - P(X ≤ 10)' },
+      { key: 'zero_30s', label: 'P(X=0) en 30s', description: 'Probabilidad de recibir 0 solicitudes durante 30 segundos.', formula: 'λ₃₀ = (18 / 3) × (30 / 60) = 3; P(X=0) = e^-3' }
     ]
   },
   {

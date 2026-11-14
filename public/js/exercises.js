@@ -163,12 +163,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     const payload = await response.json();
     const data = payload.result;
+    const isExpectedCount = selected.key.startsWith('mean_');
+    const resultSummary = isExpectedCount
+      ? `<p>Cantidad promedio esperada: <strong>${Number(data.result).toFixed(2)}</strong></p>`
+      : `<p>La probabilidad es: <strong>${Number(data.result).toFixed(5)}</strong> (${Number(data.percentage).toFixed(2)}%)</p>`;
+    parametersNode.innerHTML = window.ESTADIA.renderParamList(data.params || currentExercise.params);
 
     resultBox.innerHTML = `
       <div class="answer-result">
         <h3>Resultado</h3>
-        <p>La probabilidad es: <strong>${Number(data.result).toFixed(5)}</strong> (${Number(data.percentage).toFixed(2)}%)</p>
-        <div class="answer-formula">${escapeHtml(selected.formula)}</div>
+        ${resultSummary}
+        <div class="answer-formula">${escapeHtml(data.formula || selected.formula)}</div>
       </div>
     `;
 
@@ -226,10 +231,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           const resultNumber = Number(item.result ?? payload.result ?? 0);
           const percentageNumber = Number(item.percentage ?? payload.percentage ?? 0);
           const formula = item.formula || payload.formula || 'No disponible';
+          const operation = item.operation || payload.operation || '';
+          const isExpectedCount = operation.startsWith('E[X]');
+          const adjustedLambda = item.params?.lambdaAjustado;
+          const lambdaSummary = Number.isFinite(adjustedLambda)
+            ? `<p>λ ajustado: <strong>${Number(adjustedLambda).toPrecision(6)}</strong> para ${escapeHtml(String(item.params.intervaloPregunta))} ${escapeHtml(item.params.unidadPregunta)}</p>`
+            : '';
+          const resultSummary = isExpectedCount
+            ? `<p>Cantidad promedio esperada: <strong>${resultNumber.toFixed(2)}</strong></p>`
+            : `<p>La probabilidad es: <strong>${resultNumber.toFixed(5)}</strong> (${percentageNumber.toFixed(2)}%)</p>`;
           return `
             <div class="multi-answer">
               <span class="answer-question">Pregunta ${index + 1}: ${escapeHtml(questionText)}</span>
-              <p>La probabilidad es: <strong>${Number(resultNumber).toFixed(5)}</strong> (${Number(percentageNumber).toFixed(2)}%)</p>
+              ${lambdaSummary}
+              ${resultSummary}
               <div class="answer-formula">${escapeHtml(formula)}</div>
             </div>
           `;
@@ -293,6 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       distribution: latestSolution?.analysis?.label || currentExercise?.distribution || 'No identificada',
       keywords: latestSolution?.analysis?.keywords || [],
       params: latestSolution?.params || currentExercise?.params || {},
+      answers: latestSolution?.answers || [],
       operation: customAnswers.map((answer) => answer.operation).filter(Boolean).join('; ')
         || selectedExerciseOperation?.label
         || 'No especificada',

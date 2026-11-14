@@ -79,8 +79,18 @@ async function generateGeminiResponse(prompt) {
   }
 }
 
-function buildExplanationPrompt({ enunciado, distribution, keywords = [], params = {}, operation, formula, result, question }) {
+function buildExplanationPrompt({ enunciado, distribution, keywords = [], params = {}, operation, formula, result, question, answers = [] }) {
+  const answerDetails = answers.map((answer, index) => [
+    `Inciso/pregunta ${index + 1}: ${answer.question || 'No especificada'}`,
+    `Parámetros usados: ${JSON.stringify(answer.params || {})}`,
+    `Operación: ${answer.operation || 'No especificada'}`,
+    `Fórmula: ${answer.formula || 'No especificada'}`,
+    `Resultado: ${answer.result ?? 'No disponible'}`
+  ].join('\n')).join('\n\n');
+
   return `Eres un asistente académico de estadística. Responde en español, de forma clara y concisa. Contesta la pregunta concreta que aparece abajo; empieza con la respuesta directa y no la sustituyas por una explicación de por qué se eligió la distribución. Si preguntan si se cumple un requisito o criterio, compara explícitamente el valor calculado con el umbral exigido y responde sí o no. Usa el enunciado y los resultados proporcionados; no inventes valores. Si falta información, dilo claramente y solicita el dato necesario. No des una solución paso a paso a menos que se solicite.
+
+Si la distribución es Poisson, verifica cada inciso por separado. Usa lambdaBase, intervaloBase y unidadBase del enunciado; convierte las duraciones a una misma unidad y calcula lambdaAjustado = lambdaBase × (tiempo solicitado / tiempo base). No reutilices un lambda de otro intervalo. Respeta la diferencia entre <, <=, >= y >; para eventos "más de k", usa 1 - P(X <= k).
 
 PREGUNTA QUE DEBES RESPONDER: ${question || ''}
 
@@ -90,7 +100,9 @@ Palabras clave: ${keywords.join(', ') || 'Ninguna'}
 Parámetros: ${JSON.stringify(params, null, 2)}
 Operación solicitada: ${operation || 'No especificada'}
 Fórmula aplicada: ${formula || 'No especificada'}
-Resultados calculados: ${result ?? 'No disponibles'}`;
+Resultados calculados: ${result ?? 'No disponibles'}
+Resultados estructurados por inciso:
+${answerDetails || 'No hay resultados múltiples disponibles.'}`;
 }
 
 function generateExplanation(context) {

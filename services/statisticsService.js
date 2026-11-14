@@ -33,6 +33,7 @@ function findQuestionTargetByKeyword(text, fallback = 0) {
     /(?:como máximo|a lo sumo|no supere|maximo)\s*(\d+(?:[.,]\d+)?)/i,
     /(?:al menos|por lo menos|mas de|más de|supera|mayor que)\s*(\d+(?:[.,]\d+)?)/i,
     /(?:menos de|inferior a)\s*(\d+(?:[.,]\d+)?)/i,
+    /(?:<=|≤|<|>=|≥|>)\s*(\d+(?:[.,]\d+)?)/i,
     /(?:entre\s*)(\d+(?:[.,]\d+)?)(?:\s*(?:y|e)\s*)(\d+(?:[.,]\d+)?)/i
   ];
 
@@ -52,33 +53,117 @@ function findQuestionTargetByKeyword(text, fallback = 0) {
   return fallback;
 }
 
-function extractPoissonLambda(text) {
-  const normalizedText = (text || '').toLowerCase();
+const TIME_UNIT_SECONDS = {
+  milisegundos: 0.001,
+  segundos: 1,
+  minutos: 60,
+  horas: 3600,
+  dias: 86400,
+  semanas: 604800
+};
 
-  const rateMatch = /([0-9]+(?:[.,][0-9]+)?)\s*(solicitudes|alertas|llegadas|eventos)\s*(?:cada|por|en)\s*(\d+(?:[.,]\d+)?)\s*(minutos|minuto|segundos|segundo|horas|hora)/i.exec(normalizedText);
-  if (rateMatch) {
-    const occurrences = Number(rateMatch[1].replace(',', '.'));
-    const interval = Number(rateMatch[3].replace(',', '.'));
-    const unit = (rateMatch[4] || '').toLowerCase();
-    if (unit.startsWith('min')) return occurrences / Math.max(interval, 1);
-    if (unit.startsWith('seg')) return (occurrences / Math.max(interval, 1)) * 60;
-    if (unit.startsWith('hora')) return occurrences / Math.max(interval, 1);
-  }
-
-  const averageMatch = /(?:en promedio|promedio)\s*([0-9]+(?:[.,][0-9]+)?)\s*(solicitudes|alertas|llegadas|eventos)/i.exec(normalizedText);
-  if (averageMatch) {
-    return Number(averageMatch[1].replace(',', '.'));
-  }
-
-  const oneMinute = /([0-9]+(?:[.,][0-9]+)?)\s*(solicitudes|llegadas|alertas)\s*(?:en|durante)\s*un\s*minuto/i.exec(normalizedText);
-  if (oneMinute) {
-    return Number(oneMinute[1].replace(',', '.'));
-  }
-
-  return 6;
+function normalizePoissonText(text) {
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
-function inferParamsByDistribution(distribution, text, questionText = text) {
+function normalizeTimeUnit(unit) {
+  const normalizedUnit = normalizePoissonText(unit).replace(/\./g, '');
+  if (/^(?:ms|millisecond|milisegundo)/.test(normalizedUnit)) return 'milisegundos';
+  if (/^(?:s|sec|second|seg)/.test(normalizedUnit)) return 'segundos';
+  if (/^(?:m|min|minute|minuto)/.test(normalizedUnit)) return 'minutos';
+  if (/^(?:h|hour|hora)/.test(normalizedUnit)) return 'horas';
+  if (/^(?:d|day|dia)/.test(normalizedUnit)) return 'dias';
+  if (/^(?:w|week|sem)/.test(normalizedUnit)) return 'semanas';
+  return null;
+}
+
+function intervalToSeconds(value, unit) {
+  const normalizedUnit = normalizeTimeUnit(unit);
+  return normalizedUnit ? value * TIME_UNIT_SECONDS[normalizedUnit] : 0;
+}
+
+function extractPoissonBaseRate(text) {
+  const normalizedText = normalizePoissonText(text);
+
+  const rateMatch = /([0-9]+(?:[.,][0-9]+)?)\s*(?:solicitud(?:es)?|alertas?|llegadas?|eventos?|requests?|events?|arrivals?|calls?)\s*(?:cada|por|en|every|per)\s*(\d+(?:[.,]\d+)?)\s*(milisegundos?|milliseconds?|ms|segundos?|seconds?|seg|sec|s|minutos?|minutes?|min|m|horas?|hours?|h|dias?|days?|d|semanas?|weeks?|sem|w)\b/i.exec(normalizedText);
+  if (rateMatch) {
+    const lambdaBase = Number(rateMatch[1].replace(',', '.'));
+    const intervaloBase = Number(rateMatch[2].replace(',', '.'));
+    const unidadBase = normalizeTimeUnit(rateMatch[3]);
+    const tiempoBaseSegundos = intervalToSeconds(intervaloBase, unidadBase);
+    if (tiempoBaseSegundos > 0) {
+      return { lambdaBase, intervaloBase, unidadBase, tiempoBaseSegundos };
+    }
+  }
+
+  const averageMatch = /(?:en promedio|promedio)\s*([0-9]+(?:[.,]\d+)?)\s*(?:solicitud(?:es)?|alertas?|llegadas?|eventos?)/i.exec(normalizedText);
+  const lambdaBase = averageMatch ? Number(averageMatch[1].replace(',', '.')) : 6;
+  return {
+    lambdaBase,
+    intervaloBase: 1,
+    unidadBase: 'minutos',
+    tiempoBaseSegundos: TIME_UNIT_SECONDS.minutos
+  };
+}
+
+function extractPoissonQuestionInterval(questionText) {
+  const normalizedText = normalizePoissonText(questionText);
+  const match = /\b(un|una|uno|medio|media|\d+(?:[.,]\d+)?)\s*(milisegundos?|milliseconds?|ms|segundos?|seconds?|seg|sec|s|minutos?|minutes?|min|m|horas?|hours?|h|dias?|days?|d|semanas?|weeks?|sem|w)\b/i.exec(normalizedText);
+  if (!match) return null;
+
+  const intervaloPregunta = /^(?:un|una|uno)$/i.test(match[1])
+    ? 1
+    : /^(?:medio|media)$/i.test(match[1])
+      ? 0.5
+      : Number(match[1].replace(',', '.'));
+  const unidadPregunta = normalizeTimeUnit(match[2]);
+  const tiempoPreguntaSegundos = intervalToSeconds(intervaloPregunta, unidadPregunta);
+  if (tiempoPreguntaSegundos <= 0) return null;
+
+  return { intervaloPregunta, unidadPregunta, tiempoPreguntaSegundos };
+}
+
+function extractPoissonAlertInterval(text) {
+  const normalizedText = normalizePoissonText(text);
+  const alertMatches = [...normalizedText.matchAll(/\b(?:alertas?|alarmas?)\b/g)];
+  for (let index = alertMatches.length - 1; index >= 0; index -= 1) {
+    const alertStart = alertMatches[index].index;
+    const interval = extractPoissonQuestionInterval(normalizedText.slice(alertStart, alertStart + 180));
+    if (interval) return interval;
+  }
+  return null;
+}
+
+function formatPoissonLambda(params) {
+  const formatValue = (value) => Number(value.toPrecision(6)).toString();
+  const unitLabels = { milisegundos: 'milisegundo', segundos: 'segundo', minutos: 'minuto', horas: 'hora', dias: 'día', semanas: 'semana' };
+  const intervalUnit = params.intervaloPregunta === 1
+    ? unitLabels[params.unidadPregunta]
+    : params.unidadPregunta;
+  return `λ ajustado = ${formatValue(params.lambdaBase)} × (${formatValue(params.tiempoPreguntaSegundos)} / ${formatValue(params.tiempoBaseSegundos)}) = ${formatValue(params.lambdaAjustado)} para ${formatValue(params.intervaloPregunta)} ${intervalUnit}`;
+}
+
+function setPoissonIntervalParams(params, lambdaBase, intervaloBase, unidadBase, intervaloPregunta, unidadPregunta) {
+  const tiempoBaseSegundos = intervalToSeconds(intervaloBase, unidadBase);
+  const tiempoPreguntaSegundos = intervalToSeconds(intervaloPregunta, unidadPregunta);
+  const lambdaAjustado = lambdaBase * (tiempoPreguntaSegundos / tiempoBaseSegundos);
+  Object.assign(params, {
+    lambdaBase,
+    intervaloBase,
+    unidadBase: normalizeTimeUnit(unidadBase),
+    tiempoBaseSegundos,
+    lambdaAjustado,
+    intervaloPregunta,
+    unidadPregunta: normalizeTimeUnit(unidadPregunta),
+    tiempoPreguntaSegundos
+  });
+  return lambdaAjustado;
+}
+
+function inferParamsByDistribution(distribution, text, questionText = text, inheritedPoissonInterval = null) {
   const normalizedText = (text || '').toLowerCase();
 
   if (distribution === 'binomial') {
@@ -104,16 +189,36 @@ function inferParamsByDistribution(distribution, text, questionText = text) {
   }
 
   if (distribution === 'poisson') {
-    const lambda = extractPoissonLambda(normalizedText);
-    const threshold = findQuestionTargetByKeyword(normalizedText, 8);
-    const interval = /\b(\d+)\s*(minutos|minute|minuto|segundos|segundo|horas|hora)\b/.exec(normalizedText);
-    const normalizedInterval = interval ? Number(interval[1]) : 1;
-
-    if (/30\s*segundos|30s|30 segundos/.test(normalizedText)) {
-      return { lambda: lambda * 0.5, x: threshold || 0 };
-    }
-
-    return { lambda: lambda / Math.max(normalizedInterval, 1), x: threshold || 8 };
+    const baseRate = extractPoissonBaseRate(normalizedText);
+    const alertInterval = /alerta|alarma/i.test(questionText || '')
+      ? extractPoissonAlertInterval(text)
+      : null;
+    const questionInterval = extractPoissonQuestionInterval(questionText)
+      || alertInterval
+      || inheritedPoissonInterval
+      || {
+      intervaloPregunta: baseRate.intervaloBase,
+      unidadPregunta: baseRate.unidadBase,
+      tiempoPreguntaSegundos: baseRate.tiempoBaseSegundos
+      };
+    const poissonParams = { ...baseRate };
+    const lambdaAjustado = setPoissonIntervalParams(
+      poissonParams,
+      baseRate.lambdaBase,
+      baseRate.intervaloBase,
+      baseRate.unidadBase,
+      questionInterval.intervaloPregunta,
+      questionInterval.unidadPregunta
+    );
+    const isZeroEvent = /ningun[oa]?|cero|no\s+(?:se\s+)?(?:reciba|llegue|lleguen)/i.test(questionText || '');
+    const questionTarget = findQuestionTargetByKeyword(questionText, null);
+    const contextTarget = findQuestionTargetByKeyword(normalizedText, null);
+    const x = isZeroEvent ? 0 : questionTarget ?? contextTarget ?? 8;
+    return {
+      ...poissonParams,
+      lambdaAjustado,
+      x
+    };
   }
 
   if (distribution === 'exponential') {
@@ -239,28 +344,62 @@ function computeDistributionResult(distribution, params, questionText = '', cont
   }
 
   if (distribution === 'poisson') {
-    const lambda = parseNumeric(params.lambda, 6);
+    const lambda = parseNumeric(params.lambdaAjustado ?? params.lambda, 6);
     const x = parseNumeric(params.x, 8);
+    const lambdaText = Number(lambda.toPrecision(6)).toString();
+    const normalizedQuestion = normalizePoissonText(richQuestion);
+    const normalizedContext = normalizePoissonText(contextLower);
+    const lambdaConversion = Number.isFinite(params.tiempoBaseSegundos)
+      && Number.isFinite(params.tiempoPreguntaSegundos)
+      ? formatPoissonLambda(params)
+      : `λ ajustado = ${lambdaText}`;
+    const asksForMean = /promedio|valor esperado|cantidad esperada|media de|λ|lambda/.test(normalizedQuestion);
+    const asksForZero = /ningun[oa]?|cero|no\s+(?:se\s+)?(?:reciba|llegue|lleguen)/.test(normalizedQuestion);
+    const asksForAlert = /alerta|alarma|activar/.test(normalizedQuestion);
+    const poissonEventType = (text) => {
+      const normalized = normalizePoissonText(text);
+      if (/(?:<=|≤|como maximo|a lo sumo|no supere|no mas de)/.test(normalized)) return 'lessOrEqual';
+      if (/(?:<(?!=)|menos de|inferior a|menor que)/.test(normalized)) return 'less';
+      if (/(?:>=|≥|al menos|por lo menos|como minimo|mayor o igual)/.test(normalized)) return 'greaterOrEqual';
+      if (/(?:>|mas de|supera|mayor que|excede|por encima de)/.test(normalized)) return 'greater';
+      return null;
+    };
+    const eventType = poissonEventType(questionText)
+      || (asksForAlert ? poissonEventType(contextText) : null);
 
-    if (richQuestion.includes('como máximo') || richQuestion.includes('a lo sumo') || richQuestion.includes('no supere')) {
-      operation = 'P(X <= x)';
-      formula = `Σ_{k=0}^{${x}} (e^{-λ} * λ^k) / k!`;
+    if (asksForMean) {
+      operation = 'E[X]';
+      formula = `${lambdaConversion}; E[X] = ${lambdaText} solicitudes`;
+      result = lambda;
+    } else if (asksForZero) {
+      operation = 'P(X = 0)';
+      formula = `${lambdaConversion}; P(X = 0) = e^(-${lambdaText})`;
+      result = poissonProbability(lambda, 0);
+    } else if (eventType === 'lessOrEqual') {
+      operation = `P(X <= ${x})`;
+      formula = `${lambdaConversion}; P(X <= ${x}) = Σ_{k=0}^{${x}} (e^(-λ) * λ^k) / k!`;
       result = poissonCdf(lambda, x);
-    } else if (richQuestion.includes('exactamente') || richQuestion.includes('igual a') || richQuestion.includes('igualmente')) {
-      operation = 'P(X = x)';
-      formula = `(e^(-${lambda}) * ${lambda}^{${x}}) / ${x}!`;
+    } else if (eventType === 'less') {
+      const upperLimit = Math.ceil(x) - 1;
+      operation = `P(X < ${x})`;
+      formula = `${lambdaConversion}; P(X < ${x}) = P(X <= ${upperLimit})`;
+      result = poissonCdf(lambda, upperLimit);
+    } else if (eventType === 'greaterOrEqual') {
+      const lowerLimit = Math.ceil(x) - 1;
+      operation = `P(X >= ${x})`;
+      formula = `${lambdaConversion}; P(X >= ${x}) = 1 - P(X <= ${lowerLimit})`;
+      result = 1 - poissonCdf(lambda, lowerLimit);
+    } else if (eventType === 'greater') {
+      operation = `P(X > ${x})`;
+      formula = `${lambdaConversion}; P(X > ${x}) = 1 - Σ_{k=0}^{${x}} (e^(-${lambdaText}) * ${lambdaText}^k) / k!`;
+      result = 1 - poissonCdf(lambda, x);
+    } else if (/exactamente|igual a|igualmente|p\s*\(\s*x\s*=/.test(normalizedQuestion)) {
+      operation = `P(X = ${x})`;
+      formula = `${lambdaConversion}; P(X = ${x}) = (e^(-${lambdaText}) * ${lambdaText}^${x}) / ${x}!`;
       result = poissonProbability(lambda, x);
-    } else if (richQuestion.includes('al menos') || richQuestion.includes('mas de') || richQuestion.includes('más de') || richQuestion.includes('supera')) {
-      operation = 'P(X > x)';
-      formula = `1 - P(X <= ${x})`;
-      result = 1 - poissonCdf(lambda, x);
-    } else if (contextLower.includes('al menos') || contextLower.includes('mas de') || contextLower.includes('más de') || contextLower.includes('supera')) {
-      operation = 'P(X > x)';
-      formula = `1 - P(X <= ${x})`;
-      result = 1 - poissonCdf(lambda, x);
     } else {
-      operation = 'P(X = x)';
-      formula = `(e^(-${lambda}) * ${lambda}^{${x}}) / ${x}!`;
+      operation = `P(X = ${x})`;
+      formula = `${lambdaConversion}; P(X = ${x}) = (e^(-${lambdaText}) * ${lambdaText}^${x}) / ${x}!`;
       result = poissonProbability(lambda, x);
     }
   }
@@ -286,12 +425,16 @@ function computeDistributionResult(distribution, params, questionText = '', cont
 }
 
 function buildInterpretation({ text, distribution, operation, formula, result, params }) {
-  const percentage = result <= 1 ? Number((result * 100).toFixed(4)) : Number(result.toFixed(4));
   const questionText = inferQuestionText(text);
   const paramText = Object.entries(params || {})
     .map(([key, value]) => `${key} = ${value}`)
     .join(', ');
 
+  if (String(operation).startsWith('E[X]')) {
+    return `${questionText}: la cantidad promedio esperada es ${Number(result).toFixed(4)} eventos durante el intervalo solicitado. Se obtiene con ${formula}.`;
+  }
+
+  const percentage = result <= 1 ? Number((result * 100).toFixed(4)) : Number(result.toFixed(4));
   const isUncommonEvent = result < 0.05;
   const isModerateEvent = result >= 0.05 && result < 0.25;
   const eventDescriptor = isUncommonEvent ? 'es poco probable' : isModerateEvent ? 'es moderadamente probable' : 'es bastante probable';
@@ -328,9 +471,22 @@ function solveProblem(input) {
   const params = inferParamsByDistribution(distribution, baseText, questionList[0] || statement);
 
   if (questionList.length > 1) {
+    let inheritedPoissonInterval = null;
     const answers = questionList.map((questionText, index) => {
       const questionContext = [statement, questionText].filter(Boolean).join(' ');
-      const questionParams = inferParamsByDistribution(distribution, questionContext, questionText);
+      const questionParams = inferParamsByDistribution(
+        distribution,
+        questionContext,
+        questionText,
+        inheritedPoissonInterval
+      );
+      if (distribution === 'poisson') {
+        inheritedPoissonInterval = {
+          intervaloPregunta: questionParams.intervaloPregunta,
+          unidadPregunta: questionParams.unidadPregunta,
+          tiempoPreguntaSegundos: questionParams.tiempoPreguntaSegundos
+        };
+      }
       const questionResult = computeDistributionResult(distribution, questionParams, questionText, questionContext);
       const numericResult = Number(questionResult.result.toFixed(10));
       const interpretation = buildInterpretation({
@@ -345,9 +501,12 @@ function solveProblem(input) {
       return {
         question: questionText,
         index: index + 1,
+        params: questionParams,
         ...questionResult,
         result: numericResult,
-        percentage: Number((questionResult.result <= 1 ? questionResult.result * 100 : questionResult.result).toFixed(4)),
+        percentage: questionResult.operation === 'E[X]'
+          ? null
+          : Number((questionResult.result <= 1 ? questionResult.result * 100 : questionResult.result).toFixed(4)),
         interpretation
       };
     });
@@ -382,7 +541,9 @@ function solveProblem(input) {
     operation: computed.operation,
     formula: computed.formula,
     result: numericResult,
-    percentage: Number((computed.result <= 1 ? computed.result * 100 : computed.result).toFixed(4)),
+    percentage: computed.operation === 'E[X]'
+      ? null
+      : Number((computed.result <= 1 ? computed.result * 100 : computed.result).toFixed(4)),
     interpretation,
     message: `Se detectó una mayor coincidencia con ${analysis.label}. El problema parece seguir la distribución ${analysis.label}.`
   };
@@ -392,6 +553,7 @@ function calculateExercise(exerciseId, operationKey, customParams = {}) {
   const exercise = exerciseLookup(exerciseId);
   const params = { ...exercise.params, ...customParams };
   let result;
+  let formula;
 
   switch (exercise.id) {
     case 1: {
@@ -415,14 +577,28 @@ function calculateExercise(exerciseId, operationKey, customParams = {}) {
     }
     case 3: {
       const ratePer15 = parseNumeric(params.ratePer15, 9);
-      const interval = parseNumeric(params.intervalMinutes ?? 20, 20);
-      const lambda = ratePer15 * (interval / 15);
-      if (operationKey === 'mean_20') result = lambda;
-      if (operationKey === 'exacta_12') result = poissonProbability(lambda, 12);
-      if (operationKey === 'risk_20') result = 1 - poissonCdf(lambda, parseNumeric(params.threshold ?? 15, 15));
+      const interval = operationKey === 'max_3_5min'
+        ? parseNumeric(params.alternativeMinutes ?? 5, 5)
+        : parseNumeric(params.intervalMinutes ?? 20, 20);
+      const lambda = setPoissonIntervalParams(params, ratePer15, 15, 'minutos', interval, 'minutos');
+      const lambdaText = Number(lambda.toPrecision(6)).toString();
+      const lambdaFormula = formatPoissonLambda(params);
+      if (operationKey === 'mean_20') {
+        result = lambda;
+        formula = `${lambdaFormula}; E[X] = ${lambdaText} alertas`;
+      }
+      if (operationKey === 'exacta_12') {
+        result = poissonProbability(lambda, 12);
+        formula = `${lambdaFormula}; P(X = 12) = (e^(-${lambdaText}) * ${lambdaText}^12) / 12!`;
+      }
+      if (operationKey === 'risk_20') {
+        const threshold = parseNumeric(params.threshold ?? 15, 15);
+        result = 1 - poissonCdf(lambda, threshold);
+        formula = `${lambdaFormula}; P(X > ${threshold}) = 1 - P(X <= ${threshold})`;
+      }
       if (operationKey === 'max_3_5min') {
-        const tLambda = ratePer15 * (5 / 15);
-        result = poissonCdf(tLambda, 3);
+        result = poissonCdf(lambda, 3);
+        formula = `${lambdaFormula}; P(X <= 3) = Σ_{k=0}^{3} (e^(-λ) * λ^k) / k!`;
       }
       break;
     }
@@ -436,13 +612,30 @@ function calculateExercise(exerciseId, operationKey, customParams = {}) {
     }
     case 5: {
       const ratePer3 = parseNumeric(params.ratePer3Min, 18);
-      const lambda = ratePer3 / 3;
-      if (operationKey === 'mean_1min') result = lambda;
-      if (operationKey === 'exacta_8') result = poissonProbability(lambda, 8);
-      if (operationKey === 'alerta_1min') result = 1 - poissonCdf(lambda, 10);
+      const intervalSeconds = operationKey === 'zero_30s'
+        ? parseNumeric(params.alternativeIntervalSeconds ?? 30, 30)
+        : parseNumeric(params.intervalMinutes ?? 1, 1) * 60;
+      const interval = intervalSeconds < 60 ? intervalSeconds : intervalSeconds / 60;
+      const intervalUnit = intervalSeconds < 60 ? 'segundos' : 'minutos';
+      const lambda = setPoissonIntervalParams(params, ratePer3, 3, 'minutos', interval, intervalUnit);
+      const lambdaText = Number(lambda.toPrecision(6)).toString();
+      const lambdaFormula = formatPoissonLambda(params);
+      if (operationKey === 'mean_1min') {
+        result = lambda;
+        formula = `${lambdaFormula}; E[X] = ${lambdaText} solicitudes`;
+      }
+      if (operationKey === 'exacta_8') {
+        result = poissonProbability(lambda, 8);
+        formula = `${lambdaFormula}; P(X = 8) = (e^(-${lambdaText}) * ${lambdaText}^8) / 8!`;
+      }
+      if (operationKey === 'alerta_1min') {
+        const threshold = parseNumeric(params.threshold ?? 10, 10);
+        result = 1 - poissonCdf(lambda, threshold);
+        formula = `${lambdaFormula}; P(X > ${threshold}) = 1 - P(X <= ${threshold})`;
+      }
       if (operationKey === 'zero_30s') {
-        const lambda30 = lambda * 0.5;
-        result = poissonProbability(lambda30, 0);
+        result = poissonProbability(lambda, 0);
+        formula = `${lambdaFormula}; P(X = 0) = e^(-${lambdaText})`;
       }
       break;
     }
@@ -485,7 +678,7 @@ function calculateExercise(exerciseId, operationKey, customParams = {}) {
     text: exercise.enunciado,
     distribution: exercise.distribution,
     operation: selectedOperation.label,
-    formula: selectedOperation.formula,
+    formula: formula || selectedOperation.formula,
     result: numericResult,
     params
   });
@@ -495,7 +688,10 @@ function calculateExercise(exerciseId, operationKey, customParams = {}) {
     title: exercise.title,
     operationKey,
     result: numericResult,
-    percentage: Number((result <= 1 ? result * 100 : result).toFixed(4)),
+    formula: formula || selectedOperation.formula,
+    percentage: operationKey.startsWith('mean_')
+      ? null
+      : Number((result <= 1 ? result * 100 : result).toFixed(4)),
     params,
     interpretation
   };

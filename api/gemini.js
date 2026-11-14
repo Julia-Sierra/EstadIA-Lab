@@ -1,4 +1,4 @@
-const { generateGeminiResponse } = require('../services/geminiService');
+const { generateExplanation } = require('../services/geminiService');
 
 const allowedOrigins = new Set([
   'https://julia-sierra.github.io',
@@ -28,7 +28,7 @@ module.exports = async function geminiHandler(req, res) {
   }
 
   try {
-    const result = await generateGeminiResponse(req.body?.prompt);
+    const result = await generateExplanation(req.body || {});
     return res.status(200).json({ ok: true, ...result });
   } catch (error) {
     return res.status(error.statusCode || 502).json({
