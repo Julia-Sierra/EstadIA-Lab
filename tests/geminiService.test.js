@@ -15,7 +15,7 @@ const unavailableResponse = () => ({
   text: async () => 'temporarily unavailable'
 });
 
-test('Gemini fallback is used only after a primary model 503 and keeps the key out of the URL', async (context) => {
+test('Gemini fallback is used after a primary model 503 and keeps the key out of the URL', async (context) => {
   const originalFetch = global.fetch;
   const originalApiKey = process.env.GEMINI_API_KEY;
   context.after(() => {
@@ -33,22 +33,22 @@ test('Gemini fallback is used only after a primary model 503 and keeps the key o
 
   const response = await generateGeminiResponse('Responde directamente.');
 
-  assert.equal(response.model, 'gemini-3.5-flash-lite');
+  assert.equal(response.model, 'gemini-3.6-flash');
   assert.equal(response.explanation, 'Respuesta de respaldo.');
   assert.deepEqual(requests.map((request) => request.url), [
     'https://generativelanguage.googleapis.com/v1beta/interactions',
     'https://generativelanguage.googleapis.com/v1beta/interactions'
   ]);
   assert.deepEqual(requests.map((request) => JSON.parse(request.options.body).model), [
-    'gemini-3.8-flash',
-    'gemini-3.5-flash-lite'
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash'
   ]);
   assert.equal(new URL(requests[0].url).search, '');
   assert.equal(requests[0].options.headers['x-goog-api-key'], 'test-secret');
   assert.equal(requests[0].options.headers['Api-Revision'], '2026-05-20');
   assert.deepEqual(JSON.parse(requests[0].options.body).generation_config, {
     thinking_level: 'low',
-    max_output_tokens: 500
+    max_output_tokens: 300
   });
   assert.equal(JSON.parse(requests[0].options.body).store, false);
 });
@@ -73,7 +73,29 @@ test('Gemini uses the fallback for any upstream HTTP error', async (context) => 
   };
 
   const response = await generateGeminiResponse('Responde directamente.');
-  assert.equal(response.model, 'gemini-3.5-flash-lite');
+  assert.equal(response.model, 'gemini-3.6-flash');
   assert.equal(response.explanation, 'Respuesta de respaldo.');
   assert.equal(requests, 2);
+});
+
+test('Gemini returns from the fast primary model without calling the fallback', async (context) => {
+  const originalFetch = global.fetch;
+  const originalApiKey = process.env.GEMINI_API_KEY;
+  context.after(() => {
+    global.fetch = originalFetch;
+    if (originalApiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = originalApiKey;
+  });
+
+  process.env.GEMINI_API_KEY = 'test-secret';
+  let requests = 0;
+  global.fetch = async () => {
+    requests += 1;
+    return successfulResponse('Respuesta directa.');
+  };
+
+  const response = await generateGeminiResponse('Responde directamente.');
+  assert.equal(response.model, 'gemini-3.5-flash-lite');
+  assert.equal(response.explanation, 'Respuesta directa.');
+  assert.equal(requests, 1);
 });

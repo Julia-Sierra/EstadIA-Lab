@@ -1,5 +1,5 @@
-const PRIMARY_MODEL = 'gemini-3.8-flash';
-const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+const PRIMARY_MODEL = 'gemini-3.5-flash-lite';
+const FALLBACK_MODEL = 'gemini-3.6-flash';
 const INTERACTIONS_API_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MAX_PROMPT_CHARS = 12000;
 
@@ -23,7 +23,7 @@ async function requestModel(prompt, model, apiKey) {
       store: false,
       generation_config: {
         thinking_level: 'low',
-        max_output_tokens: 500
+        max_output_tokens: 300
       }
     })
   });
